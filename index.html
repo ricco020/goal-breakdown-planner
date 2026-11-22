@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Goal planner online (free): dated monthly milestones, weekly pace, ahead or behind</title>
+<meta name="description" content="Free goal breakdown planner for any goal you can count: money saved, kilos, pages, sales, debt left. Enter where you start, the target and the finish date: it dates a milestone at the end of every month, gives the weekly pace, tells you today if you are ahead or behind and re-plans the next 12 weekly checkpoints from where you really are. If-then plans, print and CSV. Runs in your browser.">
+<style>
+:root{--ink:#1d1a24;--paper:#f3efe6;--navy:#23395b;--rust:#b2542b;--rule:#d8d0bd}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.6 Georgia,"Iowan Old Style",serif}
+main{max-width:800px;margin:0 auto;padding:36px 18px 60px}
+h1{font-size:1.9rem;line-height:1.15;margin:0 0 .4em;color:var(--navy)}
+h2{font-size:1.2rem;margin:1.8em 0 .5em;color:var(--navy)}
+a{color:var(--navy)}
+.box{background:#fff;border:1px solid var(--rule);border-radius:8px;padding:14px}
+.ifr{display:grid;grid-template-columns:1fr 1fr 34px;gap:8px;margin-bottom:8px;align-items:end}
+.fund{display:grid;grid-template-columns:2fr 1.2fr 1.2fr 34px;gap:8px;margin-bottom:8px;align-items:end}
+.ifr label,.fund label,.row label{font-size:.85rem;display:flex;flex-direction:column;gap:3px;min-width:0}
+input,select{font:inherit;padding:7px;border:1px solid var(--rule);border-radius:5px;background:#fff;width:100%;min-width:0}
+.x{font:inherit;border:1px solid var(--rule);background:#fff;border-radius:5px;height:40px;cursor:pointer;color:var(--rust)}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:12px}
+button.add,.dl button{font:inherit;font-weight:bold;padding:9px 14px;border:2px solid var(--navy);border-radius:6px;background:#fff;color:var(--navy);cursor:pointer}
+.dl{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}
+.dl button.main{background:var(--navy);color:#fff}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:16px 0}
+.sum div{background:#fff;border-top:4px solid var(--rust);padding:10px 14px;border-radius:4px}
+.sum b{display:block;font-size:1.2rem;color:var(--navy)}
+.warn{background:#fbe9e1;border-left:4px solid var(--rust);padding:8px 12px;border-radius:4px;margin:10px 0}
+.res{width:100%;border-collapse:collapse;background:#fff;font-size:.93rem}
+.res th,.res td{border-bottom:1px solid var(--rule);padding:6px 8px;text-align:right}
+.res th:first-child,.res td:first-child{text-align:left}
+.scroll{overflow-x:auto}
+.ok{color:#2f6b3a;font-weight:bold}.bad{color:var(--rust);font-weight:bold}
+@media print{.box,.dl,.add,.np{display:none}body{background:#fff}}
+small{color:#5f5a66}
+@media(max-width:620px){.ifr{grid-template-columns:1fr;padding-bottom:8px;border-bottom:1px solid var(--rule)}.ifr .x{height:34px}.ifr{display:grid;grid-template-columns:1fr 1fr 34px;gap:8px;margin-bottom:8px;align-items:end}
+.fund{grid-template-columns:1fr 1fr;padding-bottom:8px;border-bottom:1px solid var(--rule)}.fund label:first-child,.fund .x{grid-column:1/-1}.fund .x{height:34px}.res{font-size:.85rem}.res th,.res td{padding:5px 4px}}
+</style>
+<link rel="canonical" href="https://ricco020.github.io/goal-breakdown-planner/">
+</head>
+<body>
+<main>
+<h1>Goal breakdown planner: milestones, weekly pace, and where you stand today</h1>
+<p>Works for any goal you can put a number on, going up (savings, pages written, clients) or going down (debt left, weight, minutes per mile). Give the starting number, the target and the finish date. You get a dated milestone at the end of every month, the amount to move each week, and, once you enter where you are now, whether you are ahead or behind the line and the new weekly pace that still gets you there on time.</p>
+<div class="box">
+<div class="row">
+<label>Goal<input type="text" id="name" maxlength="80"></label>
+<label>Unit <small>(USD, kg, pages...)</small><input type="text" id="unit" maxlength="20"></label>
+</div>
+<div class="row">
+<label>Starting number<input type="number" id="a" step="any"></label>
+<label>Target<input type="number" id="b" step="any"></label>
+<label>Where you are now<input type="number" id="cur" step="any"></label>
+</div>
+<div class="row">
+<label>Start date<input type="date" id="sd"></label>
+<label>Finish date<input type="date" id="ed"></label>
+</div>
+<p><b>If-then plans</b> <small>(what is likely to get in the way, and what you will do then)</small></p>
+<div id="ifs"></div>
+<button class="add" id="addf" type="button">+ Add an if-then plan</button>
+</div>
+<div id="out"></div>
+<div class="dl"><button class="main" id="csv" type="button">Download milestones (CSV)</button><button id="pr" type="button">Print this plan</button></div>
+<h2>How the milestones are dated</h2>
+<p>The plan draws a straight line from the starting number on the start date to the target on the finish date, counted in days. Each milestone is the value of that line on the last day of a calendar month (a 31-day month moves the line a little more than February), and the last one is the target on the finish date. The weekly pace is the total change divided by the number of weeks. Nothing is rounded until it is displayed, so the milestones add up exactly.</p>
+<h2>Ahead or behind, and the re-planned pace</h2>
+<p>"Where you are now" is compared to the line at today's date. Ahead means you have moved further than the line in the direction of the goal (higher for a goal that goes up, lower for one that goes down). The required weekly pace is what is left divided by the weeks left: when you are behind it is higher than the original pace, which tells you early whether the finish date still holds or should move. The next 12 weekly checkpoints are dated from today on that new pace, not from the original plan, because a plan that still asks for last month's numbers is the one people abandon.</p>
+<h2>Limits</h2>
+<p>A straight line assumes steady progress. Goals that start slow (running, a new habit) or that grow on themselves (investments with returns) will sit behind the line early and catch up later: read the gap as information, not as a verdict. Nothing is sent anywhere: the plan is stored in this browser only.</p>
+<h2>Keep it on paper</h2>
+<p>The same four steps (goal sheet with why and how you measure it, 12 monthly milestones, 12 weeks of next actions, obstacles and if-then plans) exist as a <a href="https://tidysheets.shop/p/goal-planner-printable">printable goal planner</a>, one set per goal.</p>
+<p><small>Free tool, no account, no tracking. Source on <a href="https://github.com/ricco020/goal-breakdown-planner">GitHub</a>. More free planners on <a href="https://ricco020.github.io/">ricco020.github.io</a>.</small></p>
+</main>
+<script>
+(function(g){
+function dn(s){const[y,m,d]=s.split('-').map(Number);return Date.UTC(y,m-1,d)/864e5}
+function ds(n){const x=new Date(n*864e5);return x.toISOString().slice(0,10)}
+function plan(o){
+ const a=+o.start,b=+o.target,cur=+o.current,s=dn(o.startDate),e=dn(o.endDate),D=e-s;
+ if(!(D>0))return{error:'The finish date must be after the start date.'};
+ if(a===b)return{error:'Start and target are the same number.'};
+ const dir=b>a?1:-1,val=i=>a+(b-a)*i/D;
+ const ms=[];let y=+o.startDate.slice(0,4),m=+o.startDate.slice(5,7);
+ for(;;){const last=Date.UTC(y,m,0)/864e5;if(last>=e)break;if(last>s)ms.push({date:ds(last),expected:val(last-s)});m++;if(m>12){m=1;y++}}
+ ms.push({date:o.endDate,expected:b});
+ const t=Math.min(Math.max(dn(o.today)-s,0),D),exp=val(t),rem=D-t;
+ const r={days:D,weekly:(b-a)*7/D,milestones:ms,expectedToday:exp,ahead:(cur-exp)*dir,remainingDays:rem,
+  reached:(cur-b)*dir>=0,pct:(cur-a)/(b-a)*100,requiredWeekly:rem>0?(b-cur)*7/rem:null,checkpoints:[]};
+ if(rem>0&&!r.reached)for(let k=1;k<=12;k++){const d=Math.min(7*k,rem);r.checkpoints.push({date:ds(s+t+d),value:cur+(b-cur)*d/rem});if(d===rem)break}
+ return r}
+g.plan=plan;g.dn=dn;g.ds=ds;if(typeof module!=='undefined')module.exports={plan,dn,ds};
+})(typeof window!=='undefined'?window:globalThis);
+
+</script>
+<script>
+const $=id=>document.getElementById(id),K='goal-breakdown-planner-v1';
+const L=new Date(),tod=`${L.getFullYear()}-${String(L.getMonth()+1).padStart(2,'0')}-${String(L.getDate()).padStart(2,'0')}`;
+const d0=new Date(L.getFullYear(),L.getMonth()-1,1),fd=new Date(L.getFullYear(),L.getMonth()+8,0);
+const iso=x=>`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
+let st={name:'Emergency fund',unit:'USD',a:0,b:3000,cur:280,sd:iso(d0),ed:iso(fd),ifs:[['I get paid and the money sits in checking','I move the weekly amount to savings the same day'],['an unplanned expense eats a week','I note it and add the missed amount over the next 4 weeks']]};
+try{const s=JSON.parse(localStorage.getItem(K));if(s&&s.sd)st=s}catch(e){}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=v=>{const r=Math.round(v*100)/100;return r.toLocaleString('en-US',{maximumFractionDigits:2})+(st.unit?' '+esc(st.unit):'')};
+const day=s=>new Date(s+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+function ifrows(){$('ifs').innerHTML=st.ifs.map((f,i)=>`<div class="ifr"><label>If<input data-f="${i}" data-k="0" value="${esc(f[0])}"></label><label>Then<input data-f="${i}" data-k="1" value="${esc(f[1])}"></label><button class="x" data-df="${i}" type="button" aria-label="Remove">&times;</button></div>`).join('')}
+function draw(){
+ try{localStorage.setItem(K,JSON.stringify(st))}catch(e){}
+ if(st.a===''||st.b===''||st.cur===''||!st.sd||!st.ed){$('out').innerHTML='<div class="warn">Fill in the three numbers and both dates.</div>';window._csv='';return}
+ const r=plan({start:st.a,target:st.b,current:st.cur,startDate:st.sd,endDate:st.ed,today:tod});
+ if(r.error){$('out').innerHTML=`<div class="warn">${r.error}</div>`;window._csv='';return}
+ const tol=Math.abs(r.weekly)/7/2;
+ let status=r.reached?'<span class="ok">Target reached</span>':Math.abs(r.ahead)<=tol?'<span class="ok">On the line</span>':r.ahead>0?`<span class="ok">Ahead by ${fmt(r.ahead)}</span>`:`<span class="bad">Behind by ${fmt(-r.ahead)}</span>`;
+ let h=`<h2 class="np">${esc(st.name||'Your goal')}: ${fmt(+st.a)} to ${fmt(+st.b)} by ${day(st.ed)}</h2>`;
+ h+=`<div class="sum"><div>Original weekly pace<b>${fmt(Math.abs(r.weekly))}</b><small>${r.weekly>0?'up':'down'} every week for ${(r.days/7).toFixed(1)} weeks</small></div><div>Today<b>${status}</b><small>the line is at ${fmt(r.expectedToday)}, ${Math.round(r.pct)} % of the way done</small></div><div>Pace needed from now<b>${r.requiredWeekly===null?'finish date passed':r.reached?'none':fmt(Math.abs(r.requiredWeekly))+' / week'}</b><small>${r.requiredWeekly!==null&&!r.reached?(Math.abs(r.requiredWeekly)>Math.abs(r.weekly)*1.5?'more than 1.5 times the plan: consider moving the date':r.remainingDays+' days left'):''}</small></div></div>`;
+ if(r.requiredWeekly===null&&!r.reached)h+='<div class="warn">The finish date has passed and the target is not reached: pick a new finish date to get a new plan.</div>';
+ if(r.checkpoints.length)h+=`<h2>Next ${r.checkpoints.length} weekly checkpoints (from today)</h2><div class="scroll"><table class="res"><tr><th>Week ending</th><th>Number to reach</th><th>Done</th></tr>`+r.checkpoints.map(c=>`<tr><td>${day(c.date)}</td><td>${fmt(c.value)}</td><td>&#9744;</td></tr>`).join('')+'</table></div>';
+ h+=`<h2>Monthly milestones</h2><div class="scroll"><table class="res"><tr><th>Date</th><th>Milestone</th><th>Status</th></tr>`+r.milestones.map(m=>{const past=m.date<=tod;return`<tr><td>${day(m.date)}</td><td>${fmt(m.expected)}</td><td>${past?'passed':''}</td></tr>`}).join('')+'</table></div>';
+ const fl=st.ifs.filter(f=>f[0]||f[1]);if(fl.length)h+='<h2>If-then plans</h2><ul>'+fl.map(f=>`<li>If ${esc(f[0])}, then ${esc(f[1])}.</li>`).join('')+'</ul>';
+ $('out').innerHTML=h;
+ const q=s=>'"'+String(s).replace(/"/g,'""')+'"';
+ window._csv=['Type,Date,Value'].concat(r.milestones.map(m=>['Milestone',m.date,m.expected.toFixed(2)].join(','))).concat(r.checkpoints.map(c=>['Weekly checkpoint',c.date,c.value.toFixed(2)].join(','))).concat(fl.map(f=>['If-then','',q('If '+f[0]+', then '+f[1])].join(','))).join('\n');
+}
+document.addEventListener('input',e=>{const t=e.target;
+ if(['name','unit','a','b','cur','sd','ed'].includes(t.id))st[t.id]=t.value;else if(t.dataset.f!==undefined)st.ifs[t.dataset.f][t.dataset.k]=t.value;else return;draw()});
+document.addEventListener('click',e=>{const t=e.target;
+ if(t.id==='addf'){st.ifs.push(['','']);ifrows();draw()}else if(t.dataset.df!==undefined){st.ifs.splice(+t.dataset.df,1);ifrows();draw()}
+ else if(t.id==='pr')window.print();
+ else if(t.id==='csv'&&window._csv){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([window._csv],{type:'text/csv'}));a.download='goal-milestones.csv';a.click()}});
+['name','unit','a','b','cur','sd','ed'].forEach(k=>$(k).value=st[k]);ifrows();draw();
+</script>
+</body>
+</html>
